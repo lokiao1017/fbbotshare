@@ -9,7 +9,6 @@ import requests
 import json
 
 st.info("use your dummy account :)")
-
 if "total_shares" not in st.session_state:
     st.session_state.total_shares = 0
 if "total_sites" not in st.session_state:
@@ -40,8 +39,7 @@ def Execute(cookie, post, share_count, delay):
                     access_token = "EAAG" + re.search('EAAG(.*?)","', data).group(1)
                     return access_token, head["cookie"]
             except Exception as er:
-                st.error(f":red-background[blocked] Cookie blocked {er}")
-                return None, None
+                st.error(":red-background[blocked] Cookie blocked")
 
         async def share(self, session, token, cookie):
             ji = {
@@ -59,7 +57,7 @@ def Execute(cookie, post, share_count, delay):
                 "host": "b-graph.facebook.com",
             }
             count = 0
-            while count < share_count:
+            while count < share_count + 1:
                 time.sleep(delay)
                 async with session.post(
                     f"{st.secrets.xnxx}{post}&published=0&access_token={token}",
@@ -68,7 +66,6 @@ def Execute(cookie, post, share_count, delay):
                     data = await response.json()
                     if "id" in data:
                         count += 1
-                        st.session_state.total_shares += 1
                         st.write(
                             f"(:green[{count}]/:green[{share_count}]) - Successfully shared"
                         )
@@ -83,8 +80,6 @@ def Execute(cookie, post, share_count, delay):
         async with aiohttp.ClientSession() as session:
             share = Share()
             token, cookie = await share.get_token(session)
-            if not token or not cookie:
-                return
             tasks = []
             for i in range(num_tasks):
                 task = asyncio.create_task(share.share(session, token, cookie))
@@ -92,7 +87,6 @@ def Execute(cookie, post, share_count, delay):
             await asyncio.gather(*tasks)
 
     asyncio.run(main(1))
-    st.session_state.total_sites += 1
 
 
 def cCheck(cookie):
@@ -168,17 +162,6 @@ def conver_to_puke(user, passw):
 
 
 # ----------------------------#
-st.markdown(
-    f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
-        <span>Total Sites: <strong style="color: green">{st.session_state.total_sites}</strong></span>
-        <span>Total Shares: <strong style="color: green">{st.session_state.total_shares}</strong></span>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
-
-
 APPSTATEm = st.container()
 with APPSTATEm:
     APPSTATE = st.text_area("Appstate", key="b1")
