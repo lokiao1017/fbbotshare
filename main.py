@@ -8,65 +8,61 @@ import requests
 import json
 
 st.info("use your dummy account :)")
-def Execute(cookie, post, share_count, delay):
-	head = {
-		'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
-		'sec-ch-ua': '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
-		'sec-ch-ua-mobile': '?0',
-		'sec-ch-ua-platform': "Windows",
-		'sec-fetch-dest': 'document',
-		'sec-fetch-mode': 'navigate',
-		'sec-fetch-site': 'none',
-		'sec-fetch-user': '?1',
-		'upgrade-insecure-requests': '1'
-	}
-	class Share:
-		async def get_token(self, session):
-			try:
-				head['cookie'] = cookie
-				async with session.get('https://business.facebook.com/content_management', headers=head) as response:
-					data = await response.text()
-					access_token = 'EAAG' + re.search('EAAG(.*?)","', data).group(1)
-					return access_token, head['cookie']
-			except Exception as er:
-				st.error(":red-background[blocked] Cookie blocked")
-		async def share(self, session, token, cookie):
-			ji = {
-				"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
-				"sec-ch-ua": '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "Windows",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1",
-				"cookie": cookie,
-				"accept-encoding": "gzip, deflate",
-				"host": "b-graph.facebook.com"
-			}
-			count = 0
-			while count < share_count + 1:
-				time.sleep(delay)
-				async with session.post(f'{st.secrets.xnxx}{post}&published=0&access_token={token}', headers=ji) as response:
-					data = await response.json()
-					if 'id' in data:
-						count += 1
-						st.write(f"(:green[{count}]/:green[{share_count}]) - Successfully shared")
-						#count += 1
-					else:
-						st.write(f":red-background[Blocked] :red[cookie blocked]\nTotal success :green-background[{count}]")
-						return
-	async def main(num_tasks): 
-		async with aiohttp.ClientSession() as session:
-			share = Share()
-			token, cookie = await share.get_token(session)
-			tasks = []
-			for i in range(num_tasks):
-				task = asyncio.create_task(share.share(session, token, cookie))
-				tasks.append(task)
-			await asyncio.gather(*tasks)
-	asyncio.run(main(1))
+
+class Share:
+    def __init__(self, cookie):
+        self.cookie = cookie
+        self.head = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': "Windows",
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'none',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'cookie': cookie
+        }
+        self.share_count_viewer = 0
+
+    async def get_token(self, session):
+        try:
+            async with session.get('https://business.facebook.com/content_management', headers=self.head) as response:
+                data = await response.text()
+                access_token = 'EAAG' + re.search('EAAG(.*?)","', data).group(1)
+                return access_token
+        except Exception as er:
+            st.session_state.error_message = ":red-background[blocked] Cookie blocked"
+            return None
+
+    async def share(self, session, token, post, share_count, delay):
+            ji = self.head.copy()
+            ji["accept-encoding"] = "gzip, deflate"
+            ji["host"] = "b-graph.facebook.com"
+            
+            count = 0
+            while count < share_count:
+                time.sleep(delay)
+                async with session.post(f'{st.secrets.xnxx}{post}&published=0&access_token={token}', headers=ji) as response:
+                    data = await response.json()
+                    if 'id' in data:
+                        count += 1
+                        self.share_count_viewer += 1
+                        st.session_state.share_count_viewer_state = f"(:green[{self.share_count_viewer}]/:green[{share_count}]) - Successfully shared"
+                        #st.write(f"(:green[{count}]/:green[{share_count}]) - Successfully shared")
+                    else:
+                        st.session_state.error_message = f":red-background[Blocked] :red[cookie blocked]\nTotal success :green-background[{count}]"
+                        return
+
+async def main(cookie, post, share_count, delay):
+    async with aiohttp.ClientSession() as session:
+        share = Share(cookie)
+        token = await share.get_token(session)
+        if not token:
+            return
+        tasks = [asyncio.create_task(share.share(session, token, post, share_count, delay))]
+        await asyncio.gather(*tasks)
 
 def cCheck(cookie):
 	res = requests.get(f"{st.secrets.aso}{cookie}").json()
@@ -111,8 +107,21 @@ def conver_to_puke(user, passw):
 			return {"a":False,"b":":red-background[error] Invalid username or password"}
 	except Exception as ed:
 		return {"a":False,"b": f'{ed}'}
-#----------------------------#
+
+
+if 'total_site_viewers' not in st.session_state:
+    st.session_state.total_site_viewers = 0
+
+st.session_state.total_site_viewers += 1
+
+if 'share_count_viewer_state' not in st.session_state:
+    st.session_state.share_count_viewer_state = ''
+if 'error_message' not in st.session_state:
+    st.session_state.error_message = None
+st.write(f"Total Site Viewers: {st.session_state.total_site_viewers}")
+
 COOKIEm, APPSTATEm, LOGINm = st.tabs(["Cookie", "Appstate", "Login"])
+
 with COOKIEm:
 	COOKIE = st.text_area("Cookie",key='a1')
 	POST = st.text_input("Post link",key='a2')
@@ -129,7 +138,13 @@ with COOKIEm:
 			st.error("Invalid post link")
 		else:
 			with st.container(border=True):
-				i = Execute(COOKIE, POST, int(COUNT), int(DELAY))
+                                st.session_state.share_count_viewer_state = ''
+                                st.session_state.error_message = None
+				asyncio.run(main(COOKIE, POST, int(COUNT), int(DELAY)))
+				if st.session_state.share_count_viewer_state:
+					st.write(st.session_state.share_count_viewer_state)
+				if st.session_state.error_message:
+                                        st.error(st.session_state.error_message)
 with APPSTATEm:
 	APPSTATE = st.text_area("Appstate",key='b1')
 	POST = st.text_input("Post link",key='b2')
@@ -142,13 +157,19 @@ with APPSTATEm:
 			st.error("Invalid post link")
 		else:
 			with st.container(border=True):
+                                st.session_state.share_count_viewer_state = ''
+                                st.session_state.error_message = None
 				try:
 					_k = json.loads(APPSTATE)
 					__cookie = []
 					for k in _k:
 						__cookie.append(f'{k["key"]}={k["value"]};')
 					_Cow_ = ''.join(__cookie)
-					b = Execute(_Cow_, POST, int(COUNT), int(DELAY))
+					asyncio.run(main(_Cow_, POST, int(COUNT), int(DELAY)))
+					if st.session_state.share_count_viewer_state:
+						st.write(st.session_state.share_count_viewer_state)
+					if st.session_state.error_message:
+						st.error(st.session_state.error_message)
 				except Exception as vjh:
 					st.error(vjh)
 with LOGINm:
@@ -163,8 +184,14 @@ with LOGINm:
 			st.error("Missing inputs value")
 		else:
 			with st.container(border=True):
+                                st.session_state.share_count_viewer_state = ''
+                                st.session_state.error_message = None
 				v = conver_to_puke(username, password)
 				if v['a']:
-					tite = Execute(v['b'], POST, int(COUNT), int(DELAY))
+                                        asyncio.run(main(v['b'], POST, int(COUNT), int(DELAY)))
+                                        if st.session_state.share_count_viewer_state:
+                                            st.write(st.session_state.share_count_viewer_state)
+                                        if st.session_state.error_message:
+                                            st.error(st.session_state.error_message)
 				else:
 					st.error(v['b'])
