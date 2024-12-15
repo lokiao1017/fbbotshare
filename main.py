@@ -8,10 +8,15 @@ import time
 import requests
 import json
 
-st.info("Use your dummy account :)")
+st.info("use your dummy account :)")
+
+if "total_shares" not in st.session_state:
+    st.session_state.total_shares = 0
+if "total_sites" not in st.session_state:
+    st.session_state.total_sites = 0
 
 
-def Execute(cookie, post, share_count, delay, total_views=0):
+def Execute(cookie, post, share_count, delay):
     head = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
         "sec-ch-ua": '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
@@ -35,11 +40,8 @@ def Execute(cookie, post, share_count, delay, total_views=0):
                     access_token = "EAAG" + re.search('EAAG(.*?)","', data).group(1)
                     return access_token, head["cookie"]
             except Exception as er:
-                st.error(":red-background[blocked] Cookie blocked")
-                return (
-                    None,
-                    None,
-                )  # Return None values to handle errors in the main function
+                st.error(f":red-background[blocked] Cookie blocked {er}")
+                return None, None
 
         async def share(self, session, token, cookie):
             ji = {
@@ -66,12 +68,11 @@ def Execute(cookie, post, share_count, delay, total_views=0):
                     data = await response.json()
                     if "id" in data:
                         count += 1
-                        st.session_state.share_count_viewer += (
-                            1  # Increment session state share count
-                        )
+                        st.session_state.total_shares += 1
                         st.write(
                             f"(:green[{count}]/:green[{share_count}]) - Successfully shared"
                         )
+                        # count += 1
                     else:
                         st.write(
                             f":red-background[Blocked] :red[cookie blocked]\nTotal success :green-background[{count}]"
@@ -82,8 +83,8 @@ def Execute(cookie, post, share_count, delay, total_views=0):
         async with aiohttp.ClientSession() as session:
             share = Share()
             token, cookie = await share.get_token(session)
-            if token is None or cookie is None:
-                return  # Exit if there's an error getting token or cookie
+            if not token or not cookie:
+                return
             tasks = []
             for i in range(num_tasks):
                 task = asyncio.create_task(share.share(session, token, cookie))
@@ -91,8 +92,7 @@ def Execute(cookie, post, share_count, delay, total_views=0):
             await asyncio.gather(*tasks)
 
     asyncio.run(main(1))
-    # This block is outside the main function
-    st.session_state.total_views += total_views
+    st.session_state.total_sites += 1
 
 
 def cCheck(cookie):
@@ -107,7 +107,7 @@ def conver_to_puke(user, passw):
         session = requests.Session()
         headers = {
             "authority": "free.facebook.com",
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*[inserted by cython to avoid comment closer]/[inserted by cython to avoid comment closer]*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "accept-language": "en-US,en;q=0.9",
             "cache-control": "max-age=0",
             "content-type": "application/x-www-form-urlencoded",
@@ -167,34 +167,19 @@ def conver_to_puke(user, passw):
         return {"a": False, "b": f"{ed}"}
 
 
-# Initialize session state variables
-if "total_views" not in st.session_state:
-    st.session_state.total_views = 0
-if "share_count_viewer" not in st.session_state:
-    st.session_state.share_count_viewer = 0
-
 # ----------------------------#
-COOKIEm, APPSTATEm, LOGINm = st.tabs(["Cookie", "Appstate", "Login"])
+st.markdown(
+    f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
+        <span>Total Sites: <strong style="color: green">{st.session_state.total_sites}</strong></span>
+        <span>Total Shares: <strong style="color: green">{st.session_state.total_shares}</strong></span>
+    </div>
+""",
+    unsafe_allow_html=True,
+)
 
-with st.sidebar:
-    st.write(f"Total Site Viewer: {st.session_state.total_views}")
-    st.write(f"Total Share Count: {st.session_state.share_count_viewer}")
 
-with COOKIEm:
-    COOKIE = st.text_area("Cookie", key="a1")
-    POST = st.text_input("Post link", key="a2")
-    COUNT = st.number_input("Count", min_value=1, max_value=50000, key="a3")
-    DELAY = st.number_input("Delay", min_value=0, max_value=50000, key="a4")
-    if st.button("Submit", type="primary", key="aa1"):
-        if not COOKIE or not POST or not COUNT:
-            st.error("Missing inputs value")
-        elif "c_user" not in COOKIE:
-            st.error("Invalid cookie")
-        elif not POST.startswith("https://www.facebook.com/"):
-            st.error("Invalid post link")
-        else:
-            with st.container(border=True):
-                Execute(COOKIE, POST, int(COUNT), int(DELAY), 1)
+APPSTATEm = st.container()
 with APPSTATEm:
     APPSTATE = st.text_area("Appstate", key="b1")
     POST = st.text_input("Post link", key="b2")
@@ -213,24 +198,7 @@ with APPSTATEm:
                     for k in _k:
                         __cookie.append(f'{k["key"]}={k["value"]};')
                     _Cow_ = "".join(__cookie)
-                    Execute(_Cow_, POST, int(COUNT), int(DELAY), 1)
+                    b = Execute(_Cow_, POST, int(COUNT), int(DELAY))
                 except Exception as vjh:
                     st.error(vjh)
-with LOGINm:
-    _login = st.container(border=True)
-    username = _login.text_input("Username")
-    password = _login.text_input("Password", type="password")
-    POST = st.text_input("Post link", key="c2")
-    COUNT = st.number_input("Count", min_value=1, max_value=50000, key="c3")
-    DELAY = st.number_input("Delay", min_value=0, max_value=50000, key="c4")
-    if st.button("Submit", type="primary", key="cc1"):
-        if not username or not password or not POST:
-            st.error("Missing inputs value")
-        else:
-            with st.container(border=True):
-                v = conver_to_puke(username, password)
-                if v["a"]:
-                    Execute(v["b"], POST, int(COUNT), int(DELAY), 1)
-                else:
-                    st.error(v["b"])
 
