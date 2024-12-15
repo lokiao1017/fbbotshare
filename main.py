@@ -8,15 +8,10 @@ import time
 import requests
 import json
 
-st.info("use your dummy account :)")
-
-if "total_views" not in st.session_state:
-    st.session_state.total_views = 0
-if "total_shares" not in st.session_state:
-    st.session_state.total_shares = 0
+st.info("Use your dummy account :)")
 
 
-def Execute(cookie, post, share_count, delay):
+def Execute(cookie, post, share_count, delay, total_views=0):
     head = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
         "sec-ch-ua": '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
@@ -41,6 +36,10 @@ def Execute(cookie, post, share_count, delay):
                     return access_token, head["cookie"]
             except Exception as er:
                 st.error(":red-background[blocked] Cookie blocked")
+                return (
+                    None,
+                    None,
+                )  # Return None values to handle errors in the main function
 
         async def share(self, session, token, cookie):
             ji = {
@@ -67,10 +66,12 @@ def Execute(cookie, post, share_count, delay):
                     data = await response.json()
                     if "id" in data:
                         count += 1
+                        st.session_state.share_count_viewer += (
+                            1  # Increment session state share count
+                        )
                         st.write(
                             f"(:green[{count}]/:green[{share_count}]) - Successfully shared"
                         )
-                        st.session_state.total_shares += 1
                     else:
                         st.write(
                             f":red-background[Blocked] :red[cookie blocked]\nTotal success :green-background[{count}]"
@@ -81,6 +82,8 @@ def Execute(cookie, post, share_count, delay):
         async with aiohttp.ClientSession() as session:
             share = Share()
             token, cookie = await share.get_token(session)
+            if token is None or cookie is None:
+                return  # Exit if there's an error getting token or cookie
             tasks = []
             for i in range(num_tasks):
                 task = asyncio.create_task(share.share(session, token, cookie))
@@ -88,6 +91,8 @@ def Execute(cookie, post, share_count, delay):
             await asyncio.gather(*tasks)
 
     asyncio.run(main(1))
+    # This block is outside the main function
+    st.session_state.total_views += total_views
 
 
 def cCheck(cookie):
@@ -102,7 +107,7 @@ def conver_to_puke(user, passw):
         session = requests.Session()
         headers = {
             "authority": "free.facebook.com",
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*[inserted by cython to avoid comment closer]/[inserted by cython to avoid comment closer]*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "accept-language": "en-US,en;q=0.9",
             "cache-control": "max-age=0",
             "content-type": "application/x-www-form-urlencoded",
@@ -162,12 +167,19 @@ def conver_to_puke(user, passw):
         return {"a": False, "b": f"{ed}"}
 
 
+# Initialize session state variables
+if "total_views" not in st.session_state:
+    st.session_state.total_views = 0
+if "share_count_viewer" not in st.session_state:
+    st.session_state.share_count_viewer = 0
+
 # ----------------------------#
 COOKIEm, APPSTATEm, LOGINm = st.tabs(["Cookie", "Appstate", "Login"])
+
 with st.sidebar:
-    st.write(f"Total Site Viewer: :green[{st.session_state.total_views}]")
-    st.write(f"Total Shares: :green[{st.session_state.total_shares}]")
-    st.session_state.total_views += 1
+    st.write(f"Total Site Viewer: {st.session_state.total_views}")
+    st.write(f"Total Share Count: {st.session_state.share_count_viewer}")
+
 with COOKIEm:
     COOKIE = st.text_area("Cookie", key="a1")
     POST = st.text_input("Post link", key="a2")
@@ -178,13 +190,11 @@ with COOKIEm:
             st.error("Missing inputs value")
         elif "c_user" not in COOKIE:
             st.error("Invalid cookie")
-        # elif not cCheck(COOKIE):
-        # 	st.error("Cookie Die")
         elif not POST.startswith("https://www.facebook.com/"):
             st.error("Invalid post link")
         else:
             with st.container(border=True):
-                i = Execute(COOKIE, POST, int(COUNT), int(DELAY))
+                Execute(COOKIE, POST, int(COUNT), int(DELAY), 1)
 with APPSTATEm:
     APPSTATE = st.text_area("Appstate", key="b1")
     POST = st.text_input("Post link", key="b2")
@@ -203,7 +213,7 @@ with APPSTATEm:
                     for k in _k:
                         __cookie.append(f'{k["key"]}={k["value"]};')
                     _Cow_ = "".join(__cookie)
-                    b = Execute(_Cow_, POST, int(COUNT), int(DELAY))
+                    Execute(_Cow_, POST, int(COUNT), int(DELAY), 1)
                 except Exception as vjh:
                     st.error(vjh)
 with LOGINm:
@@ -220,7 +230,7 @@ with LOGINm:
             with st.container(border=True):
                 v = conver_to_puke(username, password)
                 if v["a"]:
-                    tite = Execute(v["b"], POST, int(COUNT), int(DELAY))
+                    Execute(v["b"], POST, int(COUNT), int(DELAY), 1)
                 else:
                     st.error(v["b"])
 
